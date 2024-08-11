@@ -11,6 +11,23 @@ on:
       - master
 
 jobs:
+
+  gitleaks:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Gitleaks
+        uses: zricethezav/gitleaks-action@v1
+        with:
+          # Specify the Gitleaks configuration file if you have one
+          config: .gitleaks.toml
+        
+      - name: Run Gitleaks
+        run: |
+          gitleaks detect --source=. --config-path=.gitleaks.toml
   build:
     runs-on: ubuntu-latest
 
