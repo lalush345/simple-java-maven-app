@@ -98,13 +98,14 @@ jobs:
           
       - name: Install Notary
         run: |
-          curl -fsSL https://github.com/theupdateframework/notary/releases/download/v0.6.1/notary-0.6.1-linux-amd64.tar.gz | tar xz -C /usr/local/bin
+          curl -fsSL https://github.com/notaryproject/notary/releases/download/v0.6.2/notary-0.6.2-linux-amd64.tar.gz | tar xz -C /usr/local/bin
 
       - name: Sign Docker image
         run: |
           echo "${{ secrets.NOTARY_PRIVATE_KEY }}" > private_key.pem
           chmod 600 private_key.pem
           notary sign my-repo/myapp:${{ github.sha }}
+
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v2
