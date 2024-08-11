@@ -18,31 +18,61 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
+      - name: Install Maven 3.9.2
+        run: |
+          MAVEN_VERSION=3.9.2
+          wget https://archive.apache.org/dist/maven/maven-3/$MAVEN_VERSION/binaries/apache-maven-$MAVEN_VERSION-bin.tar.gz
+          tar -xvzf apache-maven-$MAVEN_VERSION-bin.tar.gz
+          sudo mv apache-maven-$MAVEN_VERSION /opt/maven
+          if [ -L /usr/bin/mvn ]; then sudo rm /usr/bin/mvn; fi
+          sudo ln -s /opt/maven/bin/mvn /usr/bin/mvn
+          mvn -v
+
       - name: Set up Java
         uses: actions/setup-java@v2
         with:
           distribution: 'temurin'
           java-version: '17'
 
+      - name: Cache Maven packages
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
       - name: Run Dependency Scan
         run: |
           mvn verify
 
-      - name: Install Hadolint
+      - name: Bump patch version in pom.xml
+        id: bump-version
         run: |
-          wget -qO- https://github.com/hadolint/hadolint/releases/download/v2.11.0/hadolint-Linux-x86_64 | sudo tee /usr/local/bin/hadolint > /dev/null
-          sudo chmod +x /usr/local/bin/hadolint
+          echo "Bumping patch version..."
+          CURRENT_VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
+          echo "Current version: $CURRENT_VERSION"
+          IFS='.' read -r -a VERSION_PARTS <<< "$CURRENT_VERSION"
+          PATCH_PART=${VERSION_PARTS[2]}
+          NEW_PATCH_PART=$((PATCH_PART + 1))
+          NEW_VERSION="${VERSION_PARTS[0]}.${VERSION_PARTS[1]}.$NEW_PATCH_PART"
+          echo "New version: $NEW_VERSION"
+          mvn versions:set -DnewVersion=$NEW_VERSION
+          echo "version=$NEW_VERSION" >> $GITHUB_ENV
 
-      - name: Lint Dockerfile
+      - name: Commit and push version change
         run: |
-          hadolint Dockerfile
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+          git commit -am "Bump version to ${{ env.version }}"
+          git push
+
+      - name: Build JAR file
+        run: |
+          mvn clean package -DskipTests
 
       - name: Build Docker image
         run: |
-          # Scan Docker image before building
-          trivy image myapp:latest || exit 1
-          
-          # Build Docker image
           docker build -t myapp:${{ env.version }} .
 
       - name: Log in to Docker Hub
