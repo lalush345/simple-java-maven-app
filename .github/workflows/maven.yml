@@ -11,6 +11,36 @@ on:
       - master
 
 jobs:
+  codeql:
+    runs-on: ubuntu-latest
+
+    permissions:
+      security-events: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'java' ]
+        # Adjust as necessary for your project.
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v2
+        with:
+          languages: ${{ matrix.language }}
+
+      - name: Autobuild
+        run: |
+          if [ "${{ matrix.language }}" = "java" ]; then
+            mvn clean install -DskipTests
+          fi
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v2
+        
   build:
     runs-on: ubuntu-latest
 
@@ -41,30 +71,6 @@ jobs:
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
           restore-keys: |
             ${{ runner.os }}-maven-
-
-      - name: Install SonarQube Scanner
-        run: |
-          wget https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.7.0.2747-linux.zip
-          unzip sonar-scanner-cli-4.7.0.2747-linux.zip
-          sudo mv sonar-scanner-4.7.0.2747-linux /opt/sonar-scanner
-          sudo ln -s /opt/sonar-scanner/bin/sonar-scanner /usr/bin/sonar-scanner
-
-      - name: Run static code analysis with SonarQube
-        env:
-          SONAR_HOST_URL: ${{ secrets.SONARQUBE_URL }}
-          SONAR_TOKEN: ${{ secrets.SONARQUBE_TOKEN }}
-        run: |
-          sonar-scanner \
-            -Dsonar.projectKey=my-app \
-            -Dsonar.sources=. \
-            -Dsonar.host.url=$SONAR_HOST_URL \
-            -Dsonar.login=$SONAR_TOKEN
-
-      - name: Upload SonarQube report
-        uses: actions/upload-artifact@v2
-        with:
-          name: sonar-report
-          path: sonar-report
 
       - name: Run Dependency Scan
         run: |
