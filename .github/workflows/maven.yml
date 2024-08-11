@@ -46,6 +46,15 @@ jobs:
         run: |
           mvn verify
 
+      - name: Install Hadolint
+        run: |
+          wget -qO- https://github.com/hadolint/hadolint/releases/download/v2.11.0/hadolint-Linux-x86_64 | sudo tee /usr/local/bin/hadolint > /dev/null
+          sudo chmod +x /usr/local/bin/hadolint
+
+      - name: Lint Dockerfile
+        run: |
+          hadolint Dockerfile
+
       - name: Bump patch version in pom.xml
         id: bump-version
         run: |
