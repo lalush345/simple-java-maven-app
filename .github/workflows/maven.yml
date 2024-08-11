@@ -1,11 +1,15 @@
 name: CI/CD Pipeline
 
 on:
+  push:
+    branches:
+      - master
   pull_request:
-    types: 
+    types:
       - closed
     branches:
       - master
+
 
 jobs:
   build:
@@ -20,6 +24,10 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
+
+      - name: Run Dependency Scan
+        run: |
+          mvn verify
       
       - name: Install Maven 3.9.2
         run: |
